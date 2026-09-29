@@ -62,8 +62,9 @@ These steps need a Cloud project and a Gemini key made in that project.
 
 2. Cap the Gemini quota before the key goes anywhere, so a leaked or looping key can
    spend no more than you allow. The caps are for every model, 10 requests a minute
-   and 200 a day; change `RPM` and `RPD` to suit. List the quota IDs first: on the free
-   tier they end in `-FreeTier`, and then both `--quota-id`s below take that ending.
+   and 200 a day; change `RPM` and `RPD` to suit. List the quota IDs first, and give
+   both `--quota-id`s below the ID for your project's tier as the list shows it, such as
+   the one ending in `-FreeTier`.
 
    ```bash
    gcloud services enable cloudquotas.googleapis.com generativelanguage.googleapis.com
