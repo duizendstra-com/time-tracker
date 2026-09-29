@@ -42,7 +42,7 @@ Create says to open Time Tracker from Calendar.
 
 ## Deploy it
 
-These steps need a Cloud project and a Gemini key.
+These steps need a Cloud project and a Gemini key made in that project.
 
 1. Prepare the project: the APIs, and a registry for `ko` to push to.
 
@@ -60,7 +60,40 @@ These steps need a Cloud project and a Gemini key.
    export KO_DOCKER_REPO="$REGION-docker.pkg.dev/$PROJECT_ID/services"
    ```
 
-2. Put the key in Secret Manager, and give the service its own identity, which can
+2. Cap the Gemini quota before the key goes anywhere, so a leaked or looping key can
+   spend no more than you allow. The caps are for every model, 10 requests a minute
+   and 200 a day; change `RPM` and `RPD` to suit. List the quota IDs first: on the free
+   tier they end in `-FreeTier`, and then both `--quota-id`s below take that ending.
+
+   ```bash
+   gcloud services enable cloudquotas.googleapis.com generativelanguage.googleapis.com
+   gcloud quotas info list --service=generativelanguage.googleapis.com \
+     --project="$PROJECT_ID" --filter="quotaId~PerProjectPerModel" \
+     --format="value(quotaId)"
+
+   export RPM=10 RPD=200
+   gcloud quotas preferences create --service=generativelanguage.googleapis.com \
+     --project="$PROJECT_ID" --preference-id=gemini-per-minute \
+     --quota-id=GenerateRequestsPerMinutePerProjectPerModel \
+     --preferred-value="$RPM" --allow-high-percentage-quota-decrease
+   gcloud quotas preferences create --service=generativelanguage.googleapis.com \
+     --project="$PROJECT_ID" --preference-id=gemini-per-day \
+     --quota-id=GenerateRequestsPerDayPerProjectPerModel \
+     --preferred-value="$RPD" --allow-high-percentage-quota-decrease
+   ```
+
+   Read the caps back; `grantedValue` is the one in force:
+
+   ```bash
+   gcloud quotas preferences list --project="$PROJECT_ID" \
+     --format="table(quotaId,quotaConfig.preferredValue,quotaConfig.grantedValue)"
+   ```
+
+   To change a cap later, run `gcloud quotas preferences update` with the same
+   `--preference-id`. In the console it is APIs & Services, Generative Language API,
+   Quotas & System Limits.
+
+3. Put the key in Secret Manager, and give the service its own identity, which can
    read that secret and nothing else.
 
    ```bash
@@ -75,7 +108,7 @@ These steps need a Cloud project and a Gemini key.
      --role=roles/secretmanager.secretAccessor
    ```
 
-3. Build it with `ko`, with no Dockerfile, and deploy it to Cloud Run. The service is
+4. Build it with `ko`, with no Dockerfile, and deploy it to Cloud Run. The service is
    private.
 
    ```bash
@@ -87,7 +120,7 @@ These steps need a Cloud project and a Gemini key.
      --no-allow-unauthenticated
    ```
 
-4. Let the add-on, and only the add-on, call the service.
+5. Let the add-on, and only the add-on, call the service.
 
    ```bash
    export ADDON_SA=$(gcloud workspace-add-ons get-authorization \
@@ -98,7 +131,7 @@ These steps need a Cloud project and a Gemini key.
      --role=roles/run.invoker
    ```
 
-5. Register the add-on and install it for yourself. Both triggers call the service's one
+6. Register the add-on and install it for yourself. Both triggers call the service's one
    URL. `currentEventAccess: READ` and `calendar.addons.current.event.read` make
    Calendar send the opened event's id; `calendar` lets the service find, make and write
    the `Time Tracker` calendar with your token; `drive.file` lets Sync make and fill its
@@ -137,6 +170,6 @@ These steps need a Cloud project and a Gemini key.
    ```
 
    After a change to the deployment file, use `deployments replace` in place of
-   `create`. After a code change, run step 3 again; nothing else changes.
+   `create`. After a code change, run step 4 again; nothing else changes.
 
-6. Open https://calendar.google.com: Time Tracker (Go) is in the side panel.
+7. Open https://calendar.google.com: Time Tracker (Go) is in the side panel.
