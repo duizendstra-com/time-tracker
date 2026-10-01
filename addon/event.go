@@ -32,9 +32,24 @@ type Input struct {
 	StringInputs *struct {
 		Value []string `json:"value"`
 	} `json:"stringInputs"`
-	DateInput *struct {
-		MsSinceEpoch json.RawMessage `json:"msSinceEpoch"`
-	} `json:"dateInput"`
+	DateInput     *msInput `json:"dateInput"`
+	DateTimeInput *msInput `json:"dateTimeInput"`
+	raw           string   // the field as Workspace sent it, for the log
+}
+
+type msInput struct {
+	MsSinceEpoch json.RawMessage `json:"msSinceEpoch"`
+}
+
+func (in *Input) UnmarshalJSON(b []byte) error {
+	type plain Input
+	var p plain
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	*in = Input(p)
+	in.raw = string(b)
+	return nil
 }
 
 // String is a text or dropdown field's value, trimmed; "" when absent.
@@ -47,14 +62,35 @@ func (e *Event) String(name string) string {
 }
 
 // Date is a date picker's value in milliseconds; ok is false when absent. Workspace
-// sends msSinceEpoch as a number or as a string.
+// documents dateInput for a date-only picker, but dateTimeInput is read too, and
+// msSinceEpoch may come as a string, an integer or a number in exponent form.
 func (e *Event) Date(name string) (ms int64, ok bool) {
 	in, found := e.Common.FormInputs[name]
-	if !found || in.DateInput == nil {
+	if !found {
 		return 0, false
 	}
-	n, err := strconv.ParseInt(strings.Trim(string(in.DateInput.MsSinceEpoch), `"`), 10, 64)
-	return n, err == nil
+	d := in.DateInput
+	if d == nil {
+		d = in.DateTimeInput
+	}
+	if d == nil {
+		return 0, false
+	}
+	v := strings.Trim(string(d.MsSinceEpoch), `"`)
+	if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+		return n, true
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	return int64(f), err == nil
+}
+
+// Raw is a form field as Workspace sent it, or "absent".
+func (e *Event) Raw(name string) string {
+	in, ok := e.Common.FormInputs[name]
+	if !ok {
+		return "absent"
+	}
+	return in.raw
 }
 
 // Param is an action parameter; "" when absent.
