@@ -14,7 +14,7 @@ func (r *request) refuse(f form, at *ref, e entry.Entry) card.Response {
 		msg := "Pick or type a " + strings.Join(missing, " and a ") + ": client, project and task are all required."
 		return card.Update(r.formCard(f, r.lists(), at, msg, ""))
 	}
-	r.log.Warn("no start time", "date", r.ev.Raw("date"), "start", r.ev.Raw("start"))
+	r.log.Warn("date or start not parsed", "date", r.ev.Raw("date"), "start", r.ev.Raw("start"))
 	return card.Update(r.formCard(f, r.lists(), at, "Pick a date and a start time.", ""))
 }
 

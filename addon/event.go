@@ -61,7 +61,7 @@ func (e *Event) String(name string) string {
 	return strings.TrimSpace(in.StringInputs.Value[0])
 }
 
-// Date is a date picker's value in milliseconds; ok is false when absent. Workspace
+// Date is a date picker's value in milliseconds; ok is false when absent or unparsable. Workspace
 // documents dateInput for a date-only picker, but dateTimeInput is read too, and
 // msSinceEpoch may come as a string, an integer or a number in exponent form.
 func (e *Event) Date(name string) (ms int64, ok bool) {
@@ -84,7 +84,8 @@ func (e *Event) Date(name string) (ms int64, ok bool) {
 	return int64(f), err == nil
 }
 
-// Raw is a form field as Workspace sent it, or "absent".
+// Raw is a form field as Workspace sent it, or "absent". It is for picker and
+// dropdown fields only: never log a free-text field with it.
 func (e *Event) Raw(name string) string {
 	in, ok := e.Common.FormInputs[name]
 	if !ok {

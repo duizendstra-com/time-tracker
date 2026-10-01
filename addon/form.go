@@ -45,7 +45,8 @@ func formOf(ev *Event) form {
 		Describe: ev.String("describe"),
 		Prefill:  ev.Param("prefill") == "1",
 	}
-	// A date picker sends midnight UTC of the chosen day.
+	// A date picker sends midnight UTC of the chosen day; a dateTimeInput is read the
+	// same way, so it is assumed to be date-only.
 	if ms, ok := ev.Date("date"); ok {
 		f.Date = time.UnixMilli(ms).UTC().Format(dateLayout)
 	}
