@@ -1,5 +1,5 @@
 // Package card is the JSON a Google Workspace add-on over HTTP answers with: a
-// card (google.apps.card.v1) inside renderActions, as
+// card (google.apps.card.v1) in a RenderActions at the top level, as
 // https://developers.google.com/workspace/add-ons/guides/alternate-runtimes shows.
 package card
 
@@ -120,7 +120,9 @@ type Footer struct {
 // Response is what the service answers every request with: cards to draw, or a
 // request for scopes the user has not granted.
 type Response struct {
-	RenderActions *RenderActions `json:"renderActions,omitempty"`
+	// RenderActions is embedded, so its "action" is the top-level key. Calendar
+	// parses the body as RenderActions and rejects a "renderActions" wrapper.
+	*RenderActions
 	// Scopes asks Workspace to show its consent screen; Workspace runs the action
 	// again once the user grants them.
 	Scopes *ScopeRequest `json:"requesting_google_scopes,omitempty"`
